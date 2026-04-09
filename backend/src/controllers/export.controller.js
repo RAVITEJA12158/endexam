@@ -36,7 +36,7 @@ const exportCSV = async (req, res) => {
       orderBy: { date: 'desc' },
     });
 
-    // Fetch settlements where this user paid others
+    // Fetch settlements where this user paid others (outgoing)
     const settlements = await prisma.transaction.findMany({
       where: {
         userId,
@@ -50,6 +50,29 @@ const exportCSV = async (req, res) => {
               include: {
                 expense: { include: { category: { select: { name: true } } } },
                 paidBy: { select: { username: true, name: true } },
+                group: { select: { name: true } },
+              },
+            },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    // Fetch settlements where others paid this user (incoming)
+    const receivedSettlements = await prisma.transaction.findMany({
+      where: {
+        userId,
+        type: 'PAYMENT_RECEIVED',
+        ...(where.date ? { createdAt: where.date } : {}),
+      },
+      include: {
+        split: {
+          include: {
+            user: { select: { username: true, name: true } },
+            sharedExpense: {
+              include: {
+                expense: { include: { category: { select: { name: true } } } },
                 group: { select: { name: true } },
               },
             },
@@ -90,7 +113,7 @@ const exportCSV = async (req, res) => {
       ].join(','));
     }
 
-    // Settlement payments
+    // Settlement payments (outgoing — you paid someone)
     for (const txn of settlements) {
       if (!txn.split) continue;
       const se = txn.split.sharedExpense;
@@ -107,6 +130,27 @@ const exportCSV = async (req, res) => {
         '',
         csvEscape(se.group?.name || ''),
         csvEscape(se.paidBy.name || se.paidBy.username),
+      ].join(','));
+    }
+
+    // Received settlements (incoming — someone paid you)
+    for (const txn of receivedSettlements) {
+      if (!txn.split) continue;
+      const se = txn.split.sharedExpense;
+      const paidByUser = txn.split.user;
+      rows.push([
+        formatDate(txn.createdAt),
+        csvEscape(`Received payment for: ${se.expense.title}`),
+        'Settlement Received',
+        csvEscape(se.expense.category.name),
+        txn.amount.toFixed(2),
+        txn.mode || '',
+        txn.amount.toFixed(2),
+        txn.amount.toFixed(2),
+        'RECEIVED',
+        '',
+        csvEscape(se.group?.name || ''),
+        csvEscape(paidByUser?.name || paidByUser?.username || ''),
       ].join(','));
     }
 

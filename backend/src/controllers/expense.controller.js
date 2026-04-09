@@ -68,9 +68,49 @@ const getExpenses = async (req, res) => {
       prisma.expense.count({ where }),
     ]);
 
+    // Also fetch settlement payments made by this user so they appear in the expense list
+    const settlementPayments = await prisma.transaction.findMany({
+      where: {
+        userId,
+        type: 'PAYMENT',
+        ...(where.date ? { createdAt: where.date } : {}),
+      },
+      include: {
+        split: {
+          include: {
+            sharedExpense: {
+              include: {
+                expense: { include: { category: { select: { id: true, name: true } } } },
+                paidBy: { select: { id: true, username: true, name: true } },
+              },
+            },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const settlementItems = settlementPayments
+      .filter((txn) => txn.split)
+      .map((txn) => {
+        const se = txn.split.sharedExpense;
+        return {
+          id: txn.id,
+          title: `Settlement: ${se.expense.title}`,
+          amount: txn.amount,
+          date: txn.createdAt,
+          type: 'SETTLEMENT_PAYMENT',
+          paymentMode: txn.mode || '',
+          notes: `Paid to ${se.paidBy.name || se.paidBy.username}`,
+          category: se.expense.category,
+          sharedExpense: null,
+          isSettlement: true,
+        };
+      });
+
     return res.status(200).json({
-      expenses,
-      total,
+      expenses: [...expenses, ...settlementItems],
+      total: total + settlementItems.length,
       page: pageNum,
       totalPages: Math.ceil(total / limitNum),
     });
