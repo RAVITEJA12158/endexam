@@ -71,7 +71,12 @@ const getExpenses = async (req, res) => {
       where: {
         userId,
         type: 'PAYMENT',
+        // Apply date filter via createdAt (Transactions use createdAt not date)
         ...(where.date ? { createdAt: where.date } : {}),
+        // Apply category filter via the linked expense's category
+        ...(categoryId ? {
+          split: { sharedExpense: { expense: { categoryId } } },
+        } : {}),
       },
       include: {
         split: {
@@ -87,8 +92,20 @@ const getExpenses = async (req, res) => {
       },
     });
 
+    const searchLower = search ? search.toLowerCase() : null;
+
     const settlementItems = settlementPayments
-      .filter((txn) => txn.split)
+      .filter((txn) => {
+        if (!txn.split?.sharedExpense?.expense) return false;
+        // Apply search filter — match against the generated title or linked expense title
+        if (searchLower) {
+          const expTitle = txn.split.sharedExpense.expense.title.toLowerCase();
+          const settlementTitle = `settlement: ${expTitle}`;
+          const notes = `paid to ${(txn.split.sharedExpense.paidBy?.name || txn.split.sharedExpense.paidBy?.username || '').toLowerCase()}`;
+          if (!settlementTitle.includes(searchLower) && !notes.includes(searchLower)) return false;
+        }
+        return true;
+      })
       .map((txn) => {
         const se = txn.split.sharedExpense;
         return {
@@ -97,8 +114,8 @@ const getExpenses = async (req, res) => {
           amount: txn.amount,
           date: txn.createdAt,
           type: 'SETTLEMENT_PAYMENT',
-          paymentMode: txn.mode || '',
-          notes: `Paid to ${se.paidBy.name || se.paidBy.username}`,
+          paymentMode: txn.mode || 'CASH',
+          notes: `Paid to ${se.paidBy?.name || se.paidBy?.username || ''}`,
           category: se.expense.category,
           sharedExpense: null,
           isSettlement: true,
@@ -187,20 +204,14 @@ const getExpenseById = async (req, res) => {
         amount: txn.amount,
         date: txn.createdAt,
         type: 'SETTLEMENT_PAYMENT',
-        paymentMode: txn.mode || '',
-        notes: se ? `Paid to ${se.paidBy?.name || se.paidBy?.username}` : '',
+        paymentMode: txn.mode || 'CASH',
+        notes: se ? `Paid to ${se.paidBy?.name || se.paidBy?.username || ''}` : '',
         category: se?.expense?.category || null,
         userId: txn.userId,
         isSettlement: true,
-        sharedExpense: se
-          ? {
-              id: se.id,
-              title: se.title,
-              paidBy: se.paidBy,
-              group: se.group,
-              splits: [],
-            }
-          : null,
+        // Keep sharedExpense null — if groupId is present the detail page will
+        // call getMessages(undefined) which throws and triggers navigate('/expenses')
+        sharedExpense: null,
       });
     }
 
