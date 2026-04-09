@@ -13,3 +13,267 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+/**
+ * ================= ENUMS =================
+ */
+
+enum ExpenseType {
+  PERSONAL
+  SHARED
+}
+
+enum PaymentMode {
+  CASH
+  UPI
+  CREDIT_CARD
+  DEBIT_CARD
+  NET_BANKING
+}
+
+enum SplitStatus {
+  PENDING
+  PARTIALLY_PAID
+  PAID
+}
+
+enum TransactionType {
+  EXPENSE
+  PAYMENT
+}
+
+enum BudgetPeriod {
+  MONTHLY
+}
+
+/**
+ * ================= USER =================
+ */
+
+model User {
+  id       String @id @default(cuid())
+  name     String
+  email    String @unique
+  password String
+
+  expenses     Expense[]
+  budgets      Budget[]
+  transactions Transaction[]
+
+  sentFriendships     Friendship[] @relation("sent")
+  receivedFriendships Friendship[] @relation("received")
+
+  messages GroupMessage[]
+
+  expenseSplits ExpenseSplit[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/**
+ * ================= FRIENDSHIP =================
+ */
+
+model Friendship {
+  id String @id @default(cuid())
+
+  senderId   String
+  receiverId String
+
+  sender   User @relation("sent", fields: [senderId], references: [id])
+  receiver User @relation("received", fields: [receiverId], references: [id])
+
+  isAccepted Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([senderId])
+  @@index([receiverId])
+}
+
+/**
+ * ================= CATEGORY =================
+ */
+
+model Category {
+  id   String @id @default(cuid())
+  name String @unique
+
+  expenses Expense[]
+  budgets  Budget[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/**
+ * ================= EXPENSE =================
+ */
+
+model Expense {
+  id String @id @default(cuid())
+
+  title  String
+  amount Float
+  notes  String?
+
+  type        ExpenseType
+  paymentMode PaymentMode
+
+  categoryId String
+  userId     String
+
+  category Category @relation(fields: [categoryId], references: [id])
+  user     User     @relation(fields: [userId], references: [id])
+
+  sharedExpense SharedExpense?
+  transactions  Transaction[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([categoryId])
+}
+
+/**
+ * ================= SHARED EXPENSE =================
+ */
+
+model SharedExpense {
+  id String @id @default(cuid())
+
+  expenseId String @unique
+  groupId   String
+
+  expense Expense @relation(fields: [expenseId], references: [id])
+  group   Group   @relation(fields: [groupId], references: [id])
+
+  splits ExpenseSplit[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([groupId])
+}
+
+/**
+ * ================= EXPENSE SPLIT =================
+ */
+
+model ExpenseSplit {
+  id String @id @default(cuid())
+
+  sharedExpenseId String
+  userId          String
+
+  sharedExpense SharedExpense @relation(fields: [sharedExpenseId], references: [id])
+  user          User          @relation(fields: [userId], references: [id])
+
+  owedAmount Float
+  paidAmount Float @default(0)
+
+  status SplitStatus @default(PENDING)
+
+  transactions Transaction[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([sharedExpenseId])
+}
+
+/**
+ * ================= TRANSACTION (CORE TABLE) =================
+ */
+
+model Transaction {
+  id String @id @default(cuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  expenseId String?
+  expense   Expense? @relation(fields: [expenseId], references: [id])
+
+  splitId String?
+  split   ExpenseSplit? @relation(fields: [splitId], references: [id])
+
+  amount Float
+  type   TransactionType
+  mode   PaymentMode?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expenseId])
+  @@index([splitId])
+}
+
+/**
+ * ================= GROUP =================
+ */
+
+model Group {
+  id   String @id @default(cuid())
+  name String
+
+  messages       GroupMessage[]
+  sharedExpenses SharedExpense[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/**
+ * ================= GROUP MESSAGE =================
+ */
+
+model GroupMessage {
+  id String @id @default(cuid())
+
+  groupId String
+  userId  String
+
+  group Group @relation(fields: [groupId], references: [id])
+  user  User  @relation(fields: [userId], references: [id])
+
+  message   String?
+  expenseId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([groupId])
+  @@index([userId])
+}
+
+/**
+ * ================= BUDGET =================
+ */
+
+model Budget {
+  id String @id @default(cuid())
+
+  userId     String
+  categoryId String
+
+  user     User     @relation(fields: [userId], references: [id])
+  category Category @relation(fields: [categoryId], references: [id])
+
+  limitAmount Float
+  spentAmount Float @default(0)
+
+  month Int
+  year  Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([categoryId])
+  @@index([month, year])
+}
