@@ -63,7 +63,7 @@ export default function GroupChatPage() {
     try {
       setLoadingMessages(true)
       const res = await getMessages(gId, { limit: 50 })
-      setMessages((res.data.messages || []).reverse())
+      setMessages(res.data.messages || [])
       setUnreadCounts((prev) => ({ ...prev, [gId]: 0 }))
     } catch {
       toast.error("Failed to load messages")
@@ -89,12 +89,12 @@ export default function GroupChatPage() {
 
   useEffect(() => {
     if (!socket) return
-    const handler = ({ message, user: msgUser, groupId }) => {
+    const handler = ({ message, groupId }) => {
       if (groupId === selectedGroupId) {
-        setMessages((prev) => [
-          ...prev,
-          { id: Date.now().toString(), message, user: msgUser, createdAt: new Date().toISOString() },
-        ])
+        setMessages((prev) => {
+          if (prev.some((msg) => msg.id === message?.id)) return prev
+          return prev.filter((msg) => !msg.isTemp).concat(message)
+        })
       } else {
         setUnreadCounts((prev) => ({ ...prev, [groupId]: (prev[groupId] || 0) + 1 }))
       }
@@ -121,9 +121,6 @@ export default function GroupChatPage() {
     try {
       setSending(true)
       await sendMessage(selectedGroupId, { message: text })
-      if (socket) {
-        socket.emit("group:message", { groupId: selectedGroupId, message: text })
-      }
     } catch {
       toast.error("Failed to send message")
       setMessages((prev) => prev.filter((m) => m.id !== tempMsg.id))

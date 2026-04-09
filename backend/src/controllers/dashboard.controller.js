@@ -27,12 +27,18 @@ const getSummary = async (req, res) => {
     for (const exp of monthExpenses) {
       const cid = exp.category.id;
       if (!categoryMap[cid]) {
-        categoryMap[cid] = { categoryId: cid, categoryName: exp.category.name, total: 0 };
+        categoryMap[cid] = { categoryId: cid, categoryName: exp.category.name, name: exp.category.name, total: 0 };
       }
       categoryMap[cid].total += exp.amount;
     }
     const byCategory = Object.values(categoryMap).sort((a, b) => b.total - a.total);
-    const highestCategory = byCategory[0] || null;
+    const highestCategory = byCategory[0]
+      ? {
+          id: byCategory[0].categoryId,
+          name: byCategory[0].categoryName,
+          amount: parseFloat(byCategory[0].total.toFixed(2)),
+        }
+      : null;
 
     // ─── Current year total ───────────────────────────────────────────────────
     const yearAgg = await prisma.expense.aggregate({

@@ -97,9 +97,7 @@ export default function RegisterPage() {
     if (Object.keys(e2).length) { setErrors(e2); return }
     setLoading(true)
     try {
-      const { confirmPassword, ...payload } = form
-      payload.name = payload.fullName
-      const res = await registerApi(payload)
+      const res = await registerApi(form)
       login(res.data.token, res.data.user)
       toast.success('Account created!')
       navigate('/dashboard')

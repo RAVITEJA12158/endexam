@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Search, SlidersHorizontal, Pencil, Trash2, Eye, Download, Plus, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { getExpenses, deleteExpense } from '../../api/expenses'
+import { getCategories } from '../../api/categories'
 import { useCurrency } from '../../hooks/useCurrency'
 import { formatDate } from '../../utils/formatDate'
 import { CATEGORIES, PAYMENT_MODE_LABELS } from '../../utils/constants'
@@ -38,6 +39,7 @@ export default function ExpensesPage() {
   // Filters
   const [search, setSearch]       = useState('')
   const [categoryId, setCategoryId] = useState('')
+  const [categories, setCategories] = useState([])
   const [month, setMonth]         = useState('')
   const [year, setYear]           = useState(String(now.getFullYear()))
   const [sort, setSort]           = useState('newest')
@@ -66,6 +68,18 @@ export default function ExpensesPage() {
   }, [page, limit, sort, search, categoryId, month, year])
 
   useEffect(() => { fetchExpenses() }, [fetchExpenses])
+
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        const res = await getCategories()
+        setCategories(res.data.categories || [])
+      } catch {
+        toast.error('Failed to load categories')
+      }
+    }
+    loadCategories()
+  }, [])
 
   const hasFilters = search || categoryId || month || sort !== 'newest'
 
@@ -128,7 +142,7 @@ export default function ExpensesPage() {
           {/* Category */}
           <select value={categoryId} onChange={e => { setCategoryId(e.target.value); setPage(1) }} className="input-base">
             <option value="">All Categories</option>
-            {CATEGORIES.map(c => <option key={c.name} value={c.name}>{c.icon} {c.name}</option>)}
+            {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
 
           {/* Month */}

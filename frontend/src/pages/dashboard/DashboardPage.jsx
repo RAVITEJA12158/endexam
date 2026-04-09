@@ -7,7 +7,7 @@ import {
 import toast from 'react-hot-toast'
 import { getSummary, getRecentTxns } from '../../api/dashboard'
 import { useCurrency } from '../../hooks/useCurrency'
-import { useSocket } from '../../hooks/useSocket'
+import { useSocket } from '../../hooks/useSockets'
 import { formatRelative } from '../../utils/formatDate'
 import { CATEGORIES } from '../../utils/constants'
 import ExpensePieChart from '../../components/charts/ExpensePieChart'
