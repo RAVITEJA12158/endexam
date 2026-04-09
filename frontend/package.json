@@ -2,23 +2,24 @@
   "name": "spendsplit",
   "version": "1.0.0",
   "private": true,
+   "type": "module",
   "dependencies": {
+    "axios": "^1.6.0",
+    "date-fns": "^3.3.0",
+    "lucide-react": "^0.330.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-router-dom": "^6.22.0",
-    "axios": "^1.6.0",
-    "socket.io-client": "^4.7.0",
-    "recharts": "^2.10.0",
     "react-hot-toast": "^2.4.1",
-    "date-fns": "^3.3.0",
-    "lucide-react": "^0.330.0"
+    "react-router-dom": "^6.22.0",
+    "recharts": "^2.10.0",
+    "socket.io-client": "^4.7.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.0",
-    "vite": "^5.1.0",
-    "tailwindcss": "^3.4.0",
+    "autoprefixer": "^10.4.0",
     "postcss": "^8.4.0",
-    "autoprefixer": "^10.4.0"
+    "tailwindcss": "^3.4.0",
+    "vite": "^8.0.8"
   },
   "scripts": {
     "dev": "vite",
