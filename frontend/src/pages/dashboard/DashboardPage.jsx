@@ -246,8 +246,8 @@ export default function DashboardPage() {
                     </p>
                   </div>
                   <p className="font-mono text-sm font-medium flex-shrink-0"
-                    style={{ color: txn.type === 'PAYMENT' ? 'var(--success)' : 'var(--danger)' }}>
-                    {txn.type === 'PAYMENT' ? '+' : '-'}{format(txn.amount)}
+                    style={{ color: txn.type === 'REPAYMENT' ? 'var(--success)' : 'var(--danger)' }}>
+                    {txn.type === 'REPAYMENT' ? '+' : '-'}{format(txn.amount)}
                   </p>
                 </div>
               )
