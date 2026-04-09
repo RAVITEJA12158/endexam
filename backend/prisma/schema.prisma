@@ -1,12 +1,10 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+// ============================================================
+// EXPENSE TRACKER — COMPLETE PRISMA SCHEMA
+// PostgreSQL + Prisma ORM
+// ============================================================
 
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
@@ -14,9 +12,9 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-/**
- * ================= ENUMS =================
- */
+// ============================================================
+// ENUMS
+// ============================================================
 
 enum ExpenseType {
   PERSONAL
@@ -46,34 +44,59 @@ enum BudgetPeriod {
   MONTHLY
 }
 
-/**
- * ================= USER =================
- */
+enum NotificationType {
+  FRIEND_REQUEST
+  FRIEND_ACCEPTED
+  SPLIT_CREATED
+  PAYMENT_RECEIVED
+  BUDGET_WARNING
+  BUDGET_EXCEEDED
+}
+
+// ============================================================
+// USER
+// ============================================================
 
 model User {
   id       String @id @default(cuid())
   name     String
+  username String @unique
   email    String @unique
   password String
+  currency String @default("INR")
 
+  // expense ownership
   expenses     Expense[]
   budgets      Budget[]
   transactions Transaction[]
 
+  // friendships
   sentFriendships     Friendship[] @relation("sent")
   receivedFriendships Friendship[] @relation("received")
 
-  messages GroupMessage[]
+  // group participation
+  groupMemberships GroupMember[]
+  messages         GroupMessage[]
 
+  // splits
   expenseSplits ExpenseSplit[]
+
+  // shared expenses paid by this user
+  paidSharedExpenses SharedExpense[] @relation("paidBy")
+
+  // groups created by this user
+  createdGroups Group[] @relation("groupCreator")
+
+  // notifications
+  notifications Notification[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
-/**
- * ================= FRIENDSHIP =================
- */
+// ============================================================
+// FRIENDSHIP
+// ============================================================
 
 model Friendship {
   id String @id @default(cuid())
@@ -91,11 +114,14 @@ model Friendship {
 
   @@index([senderId])
   @@index([receiverId])
+  @@unique([senderId, receiverId])
 }
 
-/**
- * ================= CATEGORY =================
- */
+// ============================================================
+// CATEGORY
+// Seed: Food, Transport, Shopping, Education,
+//       Entertainment, Health & Medical, Utilities, Others
+// ============================================================
 
 model Category {
   id   String @id @default(cuid())
@@ -108,9 +134,9 @@ model Category {
   updatedAt DateTime @updatedAt
 }
 
-/**
- * ================= EXPENSE =================
- */
+// ============================================================
+// EXPENSE
+// ============================================================
 
 model Expense {
   id String @id @default(cuid())
@@ -118,6 +144,7 @@ model Expense {
   title  String
   amount Float
   notes  String?
+  date   DateTime @default(now())
 
   type        ExpenseType
   paymentMode PaymentMode
@@ -136,20 +163,27 @@ model Expense {
 
   @@index([userId])
   @@index([categoryId])
+  @@index([date])
 }
 
-/**
- * ================= SHARED EXPENSE =================
- */
+// ============================================================
+// SHARED EXPENSE
+// Auto-created when an expense is marked isShared = true.
+// paidById = the user who paid the full bill upfront.
+// A Group is auto-created with the expense title as name.
+// ============================================================
 
 model SharedExpense {
   id String @id @default(cuid())
 
-  expenseId String @unique
+  expenseId String  @unique
   groupId   String
+  paidById  String
+  title     String
 
   expense Expense @relation(fields: [expenseId], references: [id])
   group   Group   @relation(fields: [groupId], references: [id])
+  paidBy  User    @relation("paidBy", fields: [paidById], references: [id])
 
   splits ExpenseSplit[]
 
@@ -157,11 +191,15 @@ model SharedExpense {
   updatedAt DateTime @updatedAt
 
   @@index([groupId])
+  @@index([paidById])
 }
 
-/**
- * ================= EXPENSE SPLIT =================
- */
+// ============================================================
+// EXPENSE SPLIT
+// One row per participant (including the payer).
+// Payer's row is created with status=PAID, paidAmount=owedAmount.
+// Others start as PENDING.
+// ============================================================
 
 model ExpenseSplit {
   id String @id @default(cuid())
@@ -173,9 +211,8 @@ model ExpenseSplit {
   user          User          @relation(fields: [userId], references: [id])
 
   owedAmount Float
-  paidAmount Float @default(0)
-
-  status SplitStatus @default(PENDING)
+  paidAmount Float       @default(0)
+  status     SplitStatus @default(PENDING)
 
   transactions Transaction[]
 
@@ -184,11 +221,16 @@ model ExpenseSplit {
 
   @@index([userId])
   @@index([sharedExpenseId])
+  @@unique([sharedExpenseId, userId])
 }
 
-/**
- * ================= TRANSACTION (CORE TABLE) =================
- */
+// ============================================================
+// TRANSACTION
+// Central ledger. Two use cases:
+//   1. type=EXPENSE : expense created (expenseId set)
+//   2. type=PAYMENT : split repayment (splitId set)
+// Budget.spentAmount is updated from these records.
+// ============================================================
 
 model Transaction {
   id String @id @default(cuid())
@@ -211,26 +253,59 @@ model Transaction {
   @@index([userId])
   @@index([expenseId])
   @@index([splitId])
+  @@index([createdAt])
 }
 
-/**
- * ================= GROUP =================
- */
+// ============================================================
+// GROUP
+// Auto-created when a shared expense is created.
+// Name = shared expense title.
+// All split participants are added as GroupMembers.
+// ============================================================
 
 model Group {
-  id   String @id @default(cuid())
-  name String
+  id          String @id @default(cuid())
+  name        String
+  createdById String
 
+  createdBy User @relation("groupCreator", fields: [createdById], references: [id])
+
+  members        GroupMember[]
   messages       GroupMessage[]
   sharedExpenses SharedExpense[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([createdById])
 }
 
-/**
- * ================= GROUP MESSAGE =================
- */
+// ============================================================
+// GROUP MEMBER
+// Junction table: which users belong to which group.
+// ============================================================
+
+model GroupMember {
+  id      String @id @default(cuid())
+  groupId String
+  userId  String
+
+  group Group @relation(fields: [groupId], references: [id])
+  user  User  @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@unique([groupId, userId])
+  @@index([groupId])
+  @@index([userId])
+}
+
+// ============================================================
+// GROUP MESSAGE
+// Real-time chat per group via Socket.io.
+// expenseId is an optional loose reference to attach a message
+// to a specific shared expense within the group.
+// ============================================================
 
 model GroupMessage {
   id String @id @default(cuid())
@@ -249,11 +324,17 @@ model GroupMessage {
 
   @@index([groupId])
   @@index([userId])
+  @@index([createdAt])
 }
 
-/**
- * ================= BUDGET =================
- */
+// ============================================================
+// BUDGET
+// One row per user + category + month + year.
+// spentAmount is updated whenever a Transaction is recorded.
+// For personal expenses: spentAmount += expense.amount (payer)
+// For split payments:    spentAmount += payment.amount (settler)
+// Warning at 80%, Exceeded at 100%.
+// ============================================================
 
 model Budget {
   id String @id @default(cuid())
@@ -267,13 +348,46 @@ model Budget {
   limitAmount Float
   spentAmount Float @default(0)
 
-  month Int
-  year  Int
+  period BudgetPeriod @default(MONTHLY)
+  month  Int
+  year   Int
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([userId, categoryId, month, year])
   @@index([userId])
   @@index([categoryId])
   @@index([month, year])
+}
+
+// ============================================================
+// NOTIFICATION
+// Persisted in DB. Also emitted via Socket.io in real-time.
+// data JSON field carries contextual payload per type:
+//   FRIEND_REQUEST    : { friendshipId, senderName }
+//   FRIEND_ACCEPTED   : { friendshipId, receiverName }
+//   SPLIT_CREATED     : { sharedExpenseId, expenseTitle, owedAmount, paidByName }
+//   PAYMENT_RECEIVED  : { splitId, amount, payerName, expenseTitle }
+//   BUDGET_WARNING    : { budgetId, categoryName, percentUsed, limitAmount }
+//   BUDGET_EXCEEDED   : { budgetId, categoryName, limitAmount, spentAmount }
+// ============================================================
+
+model Notification {
+  id     String @id @default(cuid())
+  userId String
+
+  user User @relation(fields: [userId], references: [id])
+
+  type   NotificationType
+  title  String
+  body   String
+  data   Json?
+  isRead Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
 }
