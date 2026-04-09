@@ -1,5 +1,6 @@
 import { createContext, useEffect, useRef, useState, useCallback } from 'react'
 import { io } from 'socket.io-client'
+import { SOCKET_URL } from '../api/axios'
 import { useAuth } from '../hooks/useAuth'
 
 export const SocketContext = createContext(null)
@@ -22,7 +23,7 @@ export function SocketProvider({ children }) {
     }
 
     const token = localStorage.getItem('token')
-    const socket = io('http://localhost:5000', {
+    const socket = io(SOCKET_URL || undefined, {
       auth: { token },
       transports: ['websocket'],
       reconnection: true,

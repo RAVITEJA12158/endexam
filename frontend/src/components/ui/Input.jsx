@@ -6,7 +6,7 @@ export default function Input({ label, error, hint, className = '', ...props }) 
           {label}
         </label>
       )}
-      <input className={`input-base ${error ? 'border-[--danger] focus:border-[--danger]' : ''} ${className}`} {...props} />
+      <input className={`input-base ${error ? 'input-error' : ''} ${className}`} {...props} />
       {error && <p className="text-xs" style={{ color: 'var(--danger)' }}>{error}</p>}
       {hint && !error && <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{hint}</p>}
     </div>

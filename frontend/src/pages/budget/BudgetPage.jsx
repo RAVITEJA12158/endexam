@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from "react"
 import { ChevronLeft, ChevronRight, Pencil, Plus } from "lucide-react"
 import toast from "react-hot-toast"
+import { getCategories } from "../../api/categories"
 import { getBudgets, createBudget, deleteBudget } from "../../api/budgets"
 import { formatCurrency } from "../../utils/formatCurrency"
-import { CATEGORIES } from "../../utils/constants"
+import { getCategoryMeta, sortCategories } from "../../utils/constants"
 import Modal from "../../components/ui/Modal"
 import Spinner from "../../components/ui/Spinner"
 
@@ -19,7 +20,7 @@ function BudgetModal({ category, budget, month, year, onClose, onSaved }) {
     }
     try {
       setLoading(true)
-      await createBudget({ categoryId: category.id || category.name, limitAmount: val, month, year })
+      await createBudget({ categoryId: category.id, limitAmount: val, month, year })
       toast.success("Budget saved!")
       onSaved()
       onClose()
@@ -84,9 +85,41 @@ export default function BudgetPage() {
   const now = new Date()
   const [month, setMonth] = useState(now.getMonth() + 1)
   const [year, setYear] = useState(now.getFullYear())
+  const [categories, setCategories] = useState([])
   const [budgets, setBudgets] = useState([])
   const [loading, setLoading] = useState(true)
+  const [loadingCategories, setLoadingCategories] = useState(true)
   const [modal, setModal] = useState(null) // { category, budget }
+
+  useEffect(() => {
+    let ignore = false
+
+    const loadCategories = async () => {
+      try {
+        const res = await getCategories()
+        if (ignore) return
+
+        setCategories(
+          sortCategories(
+            (res.data.categories || []).map((category) => ({
+              ...category,
+              ...getCategoryMeta(category.name),
+            }))
+          )
+        )
+      } catch {
+        if (!ignore) setCategories([])
+      } finally {
+        if (!ignore) setLoadingCategories(false)
+      }
+    }
+
+    loadCategories()
+
+    return () => {
+      ignore = true
+    }
+  }, [])
 
   const fetchBudgets = useCallback(async () => {
     try {
@@ -119,7 +152,7 @@ export default function BudgetPage() {
   const isCurrentMonth = month === now.getMonth() + 1 && year === now.getFullYear()
 
   const getBudgetForCategory = (cat) =>
-    budgets.find((b) => b.category?.name === cat.name || b.category?.id === cat.id)
+    budgets.find((b) => b.category?.id === cat.id)
 
   const totalBudgeted = budgets.reduce((s, b) => s + (b.limitAmount || 0), 0)
   const totalSpent = budgets.reduce((s, b) => s + (b.spentAmount || 0), 0)
@@ -176,15 +209,19 @@ export default function BudgetPage() {
       </div>
 
       {/* Budget Grid */}
-      {loading ? (
+      {loading || loadingCategories ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
           {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
             <div key={i} className="h-36 bg-[--bg-card] rounded-xl border border-[--border] animate-pulse" />
           ))}
         </div>
+      ) : categories.length === 0 ? (
+        <div className="bg-[--bg-card] rounded-xl border border-[--border] p-5 text-sm text-[--text-muted]">
+          No categories available right now.
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-          {CATEGORIES.map((cat) => {
+          {categories.map((cat) => {
             const budget = getBudgetForCategory(cat)
             const pct = budget?.percentUsed || 0
 

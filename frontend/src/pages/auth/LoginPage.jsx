@@ -104,7 +104,11 @@ export default function LoginPage() {
 
           {errors.form && (
             <div className="mb-4 px-4 py-3 rounded-lg border text-sm"
-              style={{ background: 'var(--danger)/10', borderColor: 'var(--danger)/30', color: 'var(--danger)' }}>
+              style={{
+                background: 'rgba(var(--danger-rgb), 0.1)',
+                borderColor: 'rgba(var(--danger-rgb), 0.3)',
+                color: 'var(--danger)',
+              }}>
               {errors.form}
             </div>
           )}
@@ -127,7 +131,7 @@ export default function LoginPage() {
                   placeholder="Enter your password"
                   value={form.password}
                   onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
-                  className={`input-base pr-10 ${errors.password ? 'border-[--danger]' : ''}`}
+                  className={`input-base pr-10 ${errors.password ? 'input-error' : ''}`}
                   autoComplete="current-password"
                 />
                 <button

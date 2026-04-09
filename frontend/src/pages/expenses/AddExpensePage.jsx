@@ -2,12 +2,13 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Trash2, Plus, ToggleLeft, ToggleRight, AlertTriangle } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { getCategories } from '../../api/categories'
 import { createExpense, updateExpense, getExpense } from '../../api/expenses'
 import { getBudgets } from '../../api/budgets'
 import { useAuth } from '../../hooks/useAuth'
 import { useCurrency } from '../../hooks/useCurrency'
 import { todayISO } from '../../utils/formatDate'
-import { CATEGORIES, PAYMENT_MODES, PAYMENT_MODE_LABELS } from '../../utils/constants'
+import { getCategoryMeta, sortCategories, PAYMENT_MODES, PAYMENT_MODE_LABELS } from '../../utils/constants'
 import Button from '../../components/ui/Button'
 import FriendSearchInput from '../../components/shared/FriendSearchInput'
 import Avatar from '../../components/ui/Avatar'
@@ -38,8 +39,33 @@ export default function AddExpensePage() {
   const [budgetWarning, setBudgetWarning] = useState(null)
   const [categories, setCategories] = useState([])
 
-  // Load categories from API or use constants
-  useEffect(() => { setCategories(CATEGORIES) }, [])
+  useEffect(() => {
+    let ignore = false
+
+    const loadCategories = async () => {
+      try {
+        const res = await getCategories()
+        if (ignore) return
+
+        setCategories(
+          sortCategories(
+            (res.data.categories || []).map((category) => ({
+              ...category,
+              ...getCategoryMeta(category.name),
+            }))
+          )
+        )
+      } catch {
+        if (!ignore) setCategories([])
+      }
+    }
+
+    loadCategories()
+
+    return () => {
+      ignore = true
+    }
+  }, [])
 
   // Prefill for edit
   useEffect(() => {
@@ -48,6 +74,11 @@ export default function AddExpensePage() {
       try {
         const res = await getExpense(id)
         const exp = res.data
+        if (exp.type === 'SHARED') {
+          toast.error('Shared expenses cannot be edited from this form yet')
+          navigate(`/expenses/${id}`)
+          return
+        }
         setForm({
           title:       exp.title,
           amount:      String(exp.amount),
@@ -202,7 +233,7 @@ export default function AddExpensePage() {
             <div className="relative">
               <input value={form.title} onChange={f('title')} maxLength={80}
                 placeholder="e.g. Lunch at Restaurant"
-                className={`input-base pr-16 ${errors.title ? 'border-[--danger]' : ''}`} />
+                className={`input-base pr-16 ${errors.title ? 'input-error' : ''}`} />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs"
                 style={{ color: 'var(--text-muted)' }}>{form.title.length}/80</span>
             </div>
@@ -217,7 +248,7 @@ export default function AddExpensePage() {
                 style={{ color: 'var(--text-muted)' }}>{symbol}</span>
               <input type="number" step="0.01" min="0.01" value={form.amount} onChange={f('amount')}
                 placeholder="0.00"
-                className={`input-base pl-8 ${errors.amount ? 'border-[--danger]' : ''}`} />
+                className={`input-base pl-8 ${errors.amount ? 'input-error' : ''}`} />
             </div>
             {errors.amount && <p className="text-xs" style={{ color: 'var(--danger)' }}>{errors.amount}</p>}
           </div>
@@ -226,9 +257,10 @@ export default function AddExpensePage() {
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Category</label>
             <select value={form.categoryId} onChange={f('categoryId')}
-              className={`input-base ${errors.categoryId ? 'border-[--danger]' : ''}`}>
-              <option value="">Select category</option>
-              {CATEGORIES.map(c => <option key={c.name} value={c.name}>{c.icon} {c.name}</option>)}
+              className={`input-base ${errors.categoryId ? 'input-error' : ''}`}
+              disabled={categories.length === 0}>
+              <option value="">{categories.length === 0 ? 'Loading categories...' : 'Select category'}</option>
+              {categories.map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
             </select>
             {errors.categoryId && <p className="text-xs" style={{ color: 'var(--danger)' }}>{errors.categoryId}</p>}
           </div>
@@ -237,7 +269,7 @@ export default function AddExpensePage() {
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Date</label>
             <input type="date" value={form.date} max={todayISO()} onChange={f('date')}
-              className={`input-base ${errors.date ? 'border-[--danger]' : ''}`} />
+              className={`input-base ${errors.date ? 'input-error' : ''}`} />
           </div>
 
           {/* Payment Mode */}

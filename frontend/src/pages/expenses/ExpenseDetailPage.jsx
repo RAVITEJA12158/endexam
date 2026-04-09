@@ -62,7 +62,7 @@ export default function ExpenseDetailPage() {
   const mySplit    = se?.splits?.find(s => s.user?.id === user?.id || s.userId === user?.id)
   const isOwner    = expense.userId === user?.id
   const hasPayments = se?.splits?.some(s => s.paidAmount > 0)
-  const canEdit    = isOwner && !hasPayments
+  const canEdit    = isOwner && !isShared && !hasPayments
   const remaining  = mySplit ? mySplit.owedAmount - mySplit.paidAmount : 0
 
   const handleDelete = async () => {
@@ -205,7 +205,10 @@ export default function ExpenseDetailPage() {
                   const rem  = split.owedAmount - split.paidAmount
                   return (
                     <div key={split.id} className="flex items-center gap-3 p-3 rounded-lg"
-                      style={{ background: isMe ? 'var(--accent-glow)' : 'var(--bg-elevated)', border: isMe ? '1px solid var(--accent)/30' : 'none' }}>
+                      style={{
+                        background: isMe ? 'var(--accent-glow)' : 'var(--bg-elevated)',
+                        border: isMe ? '1px solid rgba(var(--accent-rgb), 0.3)' : 'none',
+                      }}>
                       <Avatar username={split.user?.username} name={split.user?.name} size="sm" />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
@@ -253,7 +256,10 @@ export default function ExpenseDetailPage() {
                         <div key={msg.id} className={`flex gap-2 ${isMe ? 'flex-row-reverse' : ''}`}>
                           {!isMe && <Avatar username={msg.user?.username} name={msg.user?.name} size="sm" />}
                           <div className={`max-w-xs px-3 py-2 rounded-xl text-xs ${isMe ? 'rounded-tr-sm' : 'rounded-tl-sm'}`}
-                            style={{ background: isMe ? 'var(--accent)/20' : 'var(--bg-elevated)', color: 'var(--text-primary)' }}>
+                            style={{
+                              background: isMe ? 'rgba(var(--accent-rgb), 0.2)' : 'var(--bg-elevated)',
+                              color: 'var(--text-primary)',
+                            }}>
                             {!isMe && <p className="font-medium mb-0.5" style={{ color: 'var(--accent)' }}>{msg.user?.username}</p>}
                             <p>{msg.message}</p>
                             <p className="text-[10px] mt-1 opacity-60">{formatRelative(msg.createdAt)}</p>
