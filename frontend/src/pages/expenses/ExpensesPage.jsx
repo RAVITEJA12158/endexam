@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { Search, SlidersHorizontal, Pencil, Trash2, Eye, Download, Plus, X } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { getCategories } from '../../api/categories'
 import { getExpenses, deleteExpense } from '../../api/expenses'
 import { useCurrency } from '../../hooks/useCurrency'
 import { formatDate } from '../../utils/formatDate'
-import { CATEGORIES, PAYMENT_MODE_LABELS } from '../../utils/constants'
+import { CATEGORIES, getCategoryMeta, sortCategories, PAYMENT_MODE_LABELS } from '../../utils/constants'
 import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
 import Modal from '../../components/ui/Modal'
@@ -25,7 +26,6 @@ const MONTHS = Array.from({ length: 12 }, (_, i) => ({
 
 export default function ExpensesPage() {
   const { format } = useCurrency()
-  const navigate   = useNavigate()
   const now = new Date()
 
   const [expenses, setExpenses]   = useState([])
@@ -38,6 +38,7 @@ export default function ExpensesPage() {
   // Filters
   const [search, setSearch]       = useState('')
   const [categoryId, setCategoryId] = useState('')
+  const [categories, setCategories] = useState([])
   const [month, setMonth]         = useState('')
   const [year, setYear]           = useState(String(now.getFullYear()))
   const [sort, setSort]           = useState('newest')
@@ -45,6 +46,34 @@ export default function ExpensesPage() {
   // Delete confirm
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [deleting, setDeleting]         = useState(false)
+
+  useEffect(() => {
+    let ignore = false
+
+    const loadCategories = async () => {
+      try {
+        const res = await getCategories()
+        if (ignore) return
+
+        setCategories(
+          sortCategories(
+            (res.data.categories || []).map((category) => ({
+              ...category,
+              ...getCategoryMeta(category.name),
+            }))
+          )
+        )
+      } catch {
+        if (!ignore) setCategories([])
+      }
+    }
+
+    loadCategories()
+
+    return () => {
+      ignore = true
+    }
+  }, [])
 
   const fetchExpenses = useCallback(async () => {
     setLoading(true)
@@ -128,7 +157,7 @@ export default function ExpensesPage() {
           {/* Category */}
           <select value={categoryId} onChange={e => { setCategoryId(e.target.value); setPage(1) }} className="input-base">
             <option value="">All Categories</option>
-            {CATEGORIES.map(c => <option key={c.name} value={c.name}>{c.icon} {c.name}</option>)}
+            {categories.map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
           </select>
 
           {/* Month */}
@@ -237,7 +266,10 @@ export default function ExpensesPage() {
                             <Link to={`/expenses/${exp.id}`}>
                               <button className="p-1.5 rounded transition-colors"
                                 style={{ color: 'var(--text-muted)' }}
-                                onMouseEnter={e => { e.currentTarget.style.color = 'var(--info)'; e.currentTarget.style.background = 'var(--info)/10' }}
+                                onMouseEnter={e => {
+                                  e.currentTarget.style.color = 'var(--info)'
+                                  e.currentTarget.style.background = 'rgba(var(--info-rgb), 0.1)'
+                                }}
                                 onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.background = 'transparent' }}>
                                 <Eye size={14} />
                               </button>
@@ -256,7 +288,10 @@ export default function ExpensesPage() {
                                   onClick={() => setDeleteTarget(exp)}
                                   className="p-1.5 rounded transition-colors"
                                   style={{ color: 'var(--text-muted)' }}
-                                  onMouseEnter={e => { e.currentTarget.style.color = 'var(--danger)'; e.currentTarget.style.background = 'var(--danger)/10' }}
+                                  onMouseEnter={e => {
+                                    e.currentTarget.style.color = 'var(--danger)'
+                                    e.currentTarget.style.background = 'rgba(var(--danger-rgb), 0.1)'
+                                  }}
                                   onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.background = 'transparent' }}>
                                   <Trash2 size={14} />
                                 </button>

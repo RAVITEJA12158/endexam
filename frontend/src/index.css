@@ -20,6 +20,11 @@
     --danger:        #D95C5C;
     --success:       #5BAD7F;
     --info:          #4A8FD4;
+    --accent-rgb:    74 155 127;
+    --warn-rgb:      232 168 56;
+    --danger-rgb:    217 92 92;
+    --success-rgb:   91 173 127;
+    --info-rgb:      74 143 212;
   }
 
   * {
@@ -67,61 +72,191 @@
 @layer components {
   /* ---- Buttons ---- */
   .btn-primary {
-    @apply px-4 py-2 rounded-lg font-medium text-sm bg-[--accent] text-white hover:bg-[--accent-hover] transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 0.5rem;
+    background: var(--accent);
+    color: #fff;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: background-color 150ms ease, opacity 150ms ease;
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    background: var(--accent-hover);
+  }
+
+  .btn-primary:disabled,
+  .btn-secondary:disabled,
+  .btn-danger:disabled,
+  .btn-ghost:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 
   .btn-secondary {
-    @apply px-4 py-2 rounded-lg font-medium text-sm bg-[--bg-elevated] border border-[--border] text-[--text-primary] hover:bg-[--bg-hover] transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: background-color 150ms ease, opacity 150ms ease;
+  }
+
+  .btn-secondary:hover:not(:disabled) {
+    background: var(--bg-hover);
   }
 
   .btn-danger {
-    @apply px-4 py-2 rounded-lg font-medium text-sm bg-[--danger]/10 border border-[--danger]/30 text-[--danger] hover:bg-[--danger]/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+    padding: 0.5rem 1rem;
+    border: 1px solid rgba(var(--danger-rgb), 0.3);
+    border-radius: 0.5rem;
+    background: rgba(var(--danger-rgb), 0.1);
+    color: var(--danger);
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: background-color 150ms ease, opacity 150ms ease;
+  }
+
+  .btn-danger:hover:not(:disabled) {
+    background: rgba(var(--danger-rgb), 0.2);
   }
 
   .btn-ghost {
-    @apply px-4 py-2 rounded-lg font-medium text-sm text-[--text-secondary] hover:text-[--text-primary] hover:bg-[--bg-hover] transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 0.5rem;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: background-color 150ms ease, color 150ms ease, opacity 150ms ease;
+  }
+
+  .btn-ghost:hover:not(:disabled) {
+    background: var(--bg-hover);
+    color: var(--text-primary);
   }
 
   /* ---- Form Inputs ---- */
   .input-base {
-    @apply w-full bg-[--bg-elevated] border border-[--border] rounded-lg px-3 py-2 text-[--text-primary] text-sm placeholder:text-[--text-muted] focus:outline-none focus:border-[--border-focus] focus:ring-1 focus:ring-[--accent]/30 transition-colors;
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
+  }
+
+  .input-base::placeholder {
+    color: var(--text-muted);
+  }
+
+  .input-base:focus {
+    outline: none;
+    border-color: var(--border-focus);
+    box-shadow: 0 0 0 1px rgba(var(--accent-rgb), 0.3);
+  }
+
+  .input-error {
+    border-color: var(--danger) !important;
+  }
+
+  .input-error:focus {
+    border-color: var(--danger) !important;
+    box-shadow: 0 0 0 1px rgba(var(--danger-rgb), 0.25) !important;
   }
 
   /* ---- Cards ---- */
   .card {
-    @apply rounded-xl border border-[--border] bg-[--bg-card] p-5;
+    padding: 1.25rem;
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    background: var(--bg-card);
   }
 
   .card-compact {
-    @apply rounded-xl border border-[--border] bg-[--bg-card] p-4;
+    padding: 1rem;
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    background: var(--bg-card);
   }
 
   /* ---- Status Badges ---- */
   .badge-paid {
-    @apply inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-[--success]/10 text-[--success] border border-[--success]/20;
+    display: inline-flex;
+    align-items: center;
+    padding: 0.125rem 0.5rem;
+    border: 1px solid rgba(var(--success-rgb), 0.2);
+    border-radius: 0.25rem;
+    background: rgba(var(--success-rgb), 0.1);
+    color: var(--success);
+    font-size: 0.75rem;
+    font-weight: 500;
   }
   .badge-partial {
-    @apply inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-[--warn]/10 text-[--warn] border border-[--warn]/20;
+    display: inline-flex;
+    align-items: center;
+    padding: 0.125rem 0.5rem;
+    border: 1px solid rgba(var(--warn-rgb), 0.2);
+    border-radius: 0.25rem;
+    background: rgba(var(--warn-rgb), 0.1);
+    color: var(--warn);
+    font-size: 0.75rem;
+    font-weight: 500;
   }
   .badge-pending {
-    @apply inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-[--danger]/10 text-[--danger] border border-[--danger]/20;
+    display: inline-flex;
+    align-items: center;
+    padding: 0.125rem 0.5rem;
+    border: 1px solid rgba(var(--danger-rgb), 0.2);
+    border-radius: 0.25rem;
+    background: rgba(var(--danger-rgb), 0.1);
+    color: var(--danger);
+    font-size: 0.75rem;
+    font-weight: 500;
   }
   .badge-shared {
-    @apply inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-[--info]/10 text-[--info] border border-[--info]/20;
+    display: inline-flex;
+    align-items: center;
+    padding: 0.125rem 0.5rem;
+    border: 1px solid rgba(var(--info-rgb), 0.2);
+    border-radius: 0.25rem;
+    background: rgba(var(--info-rgb), 0.1);
+    color: var(--info);
+    font-size: 0.75rem;
+    font-weight: 500;
   }
   .badge-info {
-    @apply inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-[--info]/10 text-[--info] border border-[--info]/20;
+    display: inline-flex;
+    align-items: center;
+    padding: 0.125rem 0.5rem;
+    border: 1px solid rgba(var(--info-rgb), 0.2);
+    border-radius: 0.25rem;
+    background: rgba(var(--info-rgb), 0.1);
+    color: var(--info);
+    font-size: 0.75rem;
+    font-weight: 500;
   }
 
   /* ---- Amount ---- */
   .amount {
-    @apply font-mono font-medium;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 500;
   }
   .amount-debit {
-    @apply font-mono font-medium text-[--danger];
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 500;
+    color: var(--danger);
   }
   .amount-credit {
-    @apply font-mono font-medium text-[--success];
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 500;
+    color: var(--success);
   }
 }
 

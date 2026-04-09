@@ -9,6 +9,19 @@ export const CATEGORIES = [
   { name: 'Others',           color: '#6B8EC4', icon: '📦' },
 ]
 
+const CATEGORY_ORDER = new Map(CATEGORIES.map(({ name }, index) => [name, index]))
+
+export const getCategoryMeta = (name) =>
+  CATEGORIES.find((category) => category.name === name) || { color: '#6B8EC4', icon: '•' }
+
+export const sortCategories = (categories = []) =>
+  [...categories].sort((left, right) => {
+    const leftOrder = CATEGORY_ORDER.get(left.name) ?? Number.MAX_SAFE_INTEGER
+    const rightOrder = CATEGORY_ORDER.get(right.name) ?? Number.MAX_SAFE_INTEGER
+    if (leftOrder !== rightOrder) return leftOrder - rightOrder
+    return (left.name || '').localeCompare(right.name || '')
+  })
+
 export const PAYMENT_MODES = ['CASH', 'UPI', 'CREDIT_CARD', 'DEBIT_CARD', 'NET_BANKING']
 
 export const PAYMENT_MODE_LABELS = {

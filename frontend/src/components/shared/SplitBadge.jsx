@@ -3,15 +3,15 @@ import React from "react"
 const statusConfig = {
   PAID: {
     label: "Paid",
-    className: "bg-[--success]/10 text-[--success] border border-[--success]/20",
+    className: "badge-paid",
   },
   PARTIALLY_PAID: {
     label: "Partial",
-    className: "bg-[--warn]/10 text-[--warn] border border-[--warn]/20",
+    className: "badge-partial",
   },
   PENDING: {
     label: "Pending",
-    className: "bg-[--danger]/10 text-[--danger] border border-[--danger]/20",
+    className: "badge-pending",
   },
 }
 

@@ -1,9 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Eye, EyeOff, Check, X, TrendingUp } from 'lucide-react'
+import { Eye, EyeOff, Check, TrendingUp } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { register as registerApi } from '../../api/auth'
-import { searchUsers } from '../../api/friends'
 import { useAuth } from '../../hooks/useAuth'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
@@ -55,31 +54,12 @@ export default function RegisterPage() {
   const [showPass, setShowPass]   = useState(false)
   const [showConf, setShowConf]   = useState(false)
   const [loading, setLoading]     = useState(false)
-  const [usernameStatus, setUsernameStatus] = useState(null) // 'available' | 'taken' | 'checking'
-
-  // Debounced username check
-  useEffect(() => {
-    if (form.username.length < 3) { setUsernameStatus(null); return }
-    setUsernameStatus('checking')
-    const t = setTimeout(async () => {
-      try {
-        const res = await searchUsers(form.username)
-        const users = res.data.users || []
-        const exact = users.find(u => u.username?.toLowerCase() === form.username.toLowerCase())
-        setUsernameStatus(exact ? 'taken' : 'available')
-      } catch {
-        setUsernameStatus(null)
-      }
-    }, 500)
-    return () => clearTimeout(t)
-  }, [form.username])
 
   const validate = () => {
     const e = {}
     if (!form.fullName.trim())   e.fullName = 'Full name is required'
     if (!form.username.trim())   e.username = 'Username is required'
     else if (!/^[a-z0-9_]{3,30}$/i.test(form.username)) e.username = '3-30 chars, letters/numbers/underscore only'
-    else if (usernameStatus === 'taken') e.username = 'Username already taken'
     if (!form.email.trim())      e.email = 'Email is required'
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'Invalid email format'
     if (!form.password)          e.password = 'Password is required'
@@ -168,19 +148,11 @@ export default function RegisterPage() {
                   value={form.username}
                   onChange={f('username')}
                   placeholder="e.g. john_doe"
-                  className={`input-base pr-8 ${errors.username ? 'border-[--danger]' : ''}`}
+                  className={`input-base ${errors.username ? 'input-error' : ''}`}
                   minLength={3} maxLength={30}
                 />
-                <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                  {usernameStatus === 'checking' && <div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--border)', borderTopColor: 'var(--accent)' }} />}
-                  {usernameStatus === 'available' && <Check size={14} style={{ color: 'var(--success)' }} />}
-                  {usernameStatus === 'taken' && <X size={14} style={{ color: 'var(--danger)' }} />}
-                </div>
               </div>
               {errors.username && <p className="text-xs" style={{ color: 'var(--danger)' }}>{errors.username}</p>}
-              {usernameStatus === 'available' && !errors.username && (
-                <p className="text-xs" style={{ color: 'var(--success)' }}>Username available</p>
-              )}
             </div>
 
             <Input label="Email" type="email" placeholder="you@example.com"
@@ -205,7 +177,7 @@ export default function RegisterPage() {
                   placeholder="Min 8 chars, 1 uppercase, 1 special"
                   value={form.password}
                   onChange={f('password')}
-                  className={`input-base pr-10 ${errors.password ? 'border-[--danger]' : ''}`}
+                  className={`input-base pr-10 ${errors.password ? 'input-error' : ''}`}
                 />
                 <button type="button" onClick={() => setShowPass(s => !s)}
                   className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }}>
@@ -224,7 +196,7 @@ export default function RegisterPage() {
                   placeholder="Re-enter password"
                   value={form.confirmPassword}
                   onChange={f('confirmPassword')}
-                  className={`input-base pr-10 ${errors.confirmPassword ? 'border-[--danger]' : ''}`}
+                  className={`input-base pr-10 ${errors.confirmPassword ? 'input-error' : ''}`}
                 />
                 <button type="button" onClick={() => setShowConf(s => !s)}
                   className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }}>

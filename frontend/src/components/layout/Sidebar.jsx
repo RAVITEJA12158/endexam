@@ -95,7 +95,7 @@ export default function Sidebar({ onClose }) {
           onClick={handleLogout}
           className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors"
           style={{ color: 'var(--danger)' }}
-          onMouseEnter={e => e.currentTarget.style.background = 'var(--danger)/10'}
+          onMouseEnter={e => e.currentTarget.style.background = 'rgba(var(--danger-rgb), 0.1)'}
           onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
         >
           <LogOut size={14} />
