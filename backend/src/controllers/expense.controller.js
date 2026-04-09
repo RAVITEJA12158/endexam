@@ -47,12 +47,10 @@ const getExpenses = async (req, res) => {
     const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
     const skip = (pageNum - 1) * limitNum;
 
-    const [expenses, total] = await Promise.all([
+    // Fetch all expenses (no skip/take yet — we need to merge with settlements first)
+    const [allExpenses, total] = await Promise.all([
       prisma.expense.findMany({
         where,
-        orderBy: buildSort(sort),
-        skip,
-        take: limitNum,
         include: {
           category: { select: { id: true, name: true } },
           sharedExpense: {
@@ -68,7 +66,7 @@ const getExpenses = async (req, res) => {
       prisma.expense.count({ where }),
     ]);
 
-    // Also fetch settlement payments made by this user so they appear in the expense list
+    // Also fetch settlement payments made by this user
     const settlementPayments = await prisma.transaction.findMany({
       where: {
         userId,
@@ -87,7 +85,6 @@ const getExpenses = async (req, res) => {
           },
         },
       },
-      orderBy: { createdAt: 'desc' },
     });
 
     const settlementItems = settlementPayments
@@ -108,11 +105,32 @@ const getExpenses = async (req, res) => {
         };
       });
 
+    // Merge and sort the combined list
+    const combined = [...allExpenses, ...settlementItems];
+
+    switch (sort) {
+      case 'oldest':
+        combined.sort((a, b) => new Date(a.date) - new Date(b.date));
+        break;
+      case 'amount_asc':
+        combined.sort((a, b) => a.amount - b.amount);
+        break;
+      case 'amount_desc':
+        combined.sort((a, b) => b.amount - a.amount);
+        break;
+      default: // newest
+        combined.sort((a, b) => new Date(b.date) - new Date(a.date));
+    }
+
+    // Apply pagination on the combined sorted list
+    const paginated = combined.slice(skip, skip + limitNum);
+    const combinedTotal = total + settlementItems.length;
+
     return res.status(200).json({
-      expenses: [...expenses, ...settlementItems],
-      total: total + settlementItems.length,
+      expenses: paginated,
+      total: combinedTotal,
       page: pageNum,
-      totalPages: Math.ceil(total / limitNum),
+      totalPages: Math.ceil(combinedTotal / limitNum),
     });
   } catch (err) {
     console.error(err);
