@@ -18,7 +18,7 @@ const getBudgets = async (req, res) => {
       const remaining = parseFloat((b.limitAmount - b.spentAmount).toFixed(2));
       let status = 'ok';
       if (percentUsed >= 100) status = 'exceeded';
-      else if (percentUsed >= 80) status = 'warning';
+      else if (percentUsed >= 60) status = 'warning';
 
       return { ...b, percentUsed, remaining, status };
     });
@@ -96,7 +96,7 @@ const setBudget = async (req, res) => {
     const remaining = parseFloat((budget.limitAmount - budget.spentAmount).toFixed(2));
     let status = 'ok';
     if (percentUsed >= 100) status = 'exceeded';
-    else if (percentUsed >= 80) status = 'warning';
+    else if (percentUsed >= 60) status = 'warning';
 
     return res.status(201).json({ budget: { ...budget, percentUsed, remaining, status } });
   } catch (err) {

@@ -160,7 +160,7 @@ export default function BudgetPage() {
 
   const barColor = (pct) => {
     if (pct >= 100) return "bg-[--danger]"
-    if (pct >= 80) return "bg-[--warn]"
+    if (pct >= 60) return "bg-[--warn]"
     return "bg-[--accent]"
   }
 
