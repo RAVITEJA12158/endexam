@@ -366,7 +366,7 @@ const getRecentTransactions = async (req, res) => {
       ...repayments.filter((t) => t.split).map((t) => ({
         id:        t.id,
         title:     `Received: ${t.split.sharedExpense.title}`,
-        amount:    -t.amount, // negative = money coming back
+        amount:    t.amount,
         createdAt: t.createdAt,
         category:  t.split.sharedExpense.expense.category,
         isShared:  true,
