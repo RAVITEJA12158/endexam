@@ -4,11 +4,10 @@ import { Trash2, Plus, ToggleLeft, ToggleRight, AlertTriangle } from 'lucide-rea
 import toast from 'react-hot-toast'
 import { createExpense, updateExpense, getExpense } from '../../api/expenses'
 import { getBudgets } from '../../api/budgets'
-import { getCategories } from '../../api/categories'
 import { useAuth } from '../../hooks/useAuth'
 import { useCurrency } from '../../hooks/useCurrency'
 import { todayISO } from '../../utils/formatDate'
-import { PAYMENT_MODES, PAYMENT_MODE_LABELS } from '../../utils/constants'
+import { CATEGORIES, PAYMENT_MODES, PAYMENT_MODE_LABELS } from '../../utils/constants'
 import Button from '../../components/ui/Button'
 import FriendSearchInput from '../../components/shared/FriendSearchInput'
 import Avatar from '../../components/ui/Avatar'
@@ -39,17 +38,8 @@ export default function AddExpensePage() {
   const [budgetWarning, setBudgetWarning] = useState(null)
   const [categories, setCategories] = useState([])
 
-  useEffect(() => {
-    const loadCategories = async () => {
-      try {
-        const res = await getCategories()
-        setCategories(res.data.categories || [])
-      } catch {
-        toast.error('Failed to load categories')
-      }
-    }
-    loadCategories()
-  }, [])
+  // Load categories from API or use constants
+  useEffect(() => { setCategories(CATEGORIES) }, [])
 
   // Prefill for edit
   useEffect(() => {
@@ -238,7 +228,7 @@ export default function AddExpensePage() {
             <select value={form.categoryId} onChange={f('categoryId')}
               className={`input-base ${errors.categoryId ? 'border-[--danger]' : ''}`}>
               <option value="">Select category</option>
-              {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              {CATEGORIES.map(c => <option key={c.name} value={c.name}>{c.icon} {c.name}</option>)}
             </select>
             {errors.categoryId && <p className="text-xs" style={{ color: 'var(--danger)' }}>{errors.categoryId}</p>}
           </div>
