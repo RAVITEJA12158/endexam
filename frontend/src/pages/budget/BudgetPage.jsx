@@ -2,8 +2,8 @@ import React, { useState, useEffect, useCallback } from "react"
 import { ChevronLeft, ChevronRight, Pencil, Plus } from "lucide-react"
 import toast from "react-hot-toast"
 import { getBudgets, createBudget, deleteBudget } from "../../api/budgets"
-import { getCategories } from "../../api/categories"
 import { formatCurrency } from "../../utils/formatCurrency"
+import { CATEGORIES } from "../../utils/constants"
 import Modal from "../../components/ui/Modal"
 import Spinner from "../../components/ui/Spinner"
 
@@ -19,7 +19,7 @@ function BudgetModal({ category, budget, month, year, onClose, onSaved }) {
     }
     try {
       setLoading(true)
-      await createBudget({ categoryId: category.id, limitAmount: val, month, year })
+      await createBudget({ categoryId: category.id || category.name, limitAmount: val, month, year })
       toast.success("Budget saved!")
       onSaved()
       onClose()
@@ -82,7 +82,6 @@ function BudgetModal({ category, budget, month, year, onClose, onSaved }) {
 
 export default function BudgetPage() {
   const now = new Date()
-  const [categories, setCategories] = useState([])
   const [month, setMonth] = useState(now.getMonth() + 1)
   const [year, setYear] = useState(now.getFullYear())
   const [budgets, setBudgets] = useState([])
@@ -104,18 +103,6 @@ export default function BudgetPage() {
   useEffect(() => {
     fetchBudgets()
   }, [fetchBudgets])
-
-  useEffect(() => {
-    const loadCategories = async () => {
-      try {
-        const res = await getCategories()
-        setCategories(res.data.categories || [])
-      } catch {
-        toast.error("Failed to load categories")
-      }
-    }
-    loadCategories()
-  }, [])
 
   const prevMonth = () => {
     if (month === 1) { setMonth(12); setYear((y) => y - 1) }
@@ -197,7 +184,7 @@ export default function BudgetPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-          {categories.map((cat) => {
+          {CATEGORIES.map((cat) => {
             const budget = getBudgetForCategory(cat)
             const pct = budget?.percentUsed || 0
 
