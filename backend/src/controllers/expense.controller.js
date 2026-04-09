@@ -139,7 +139,53 @@ const getExpenseById = async (req, res) => {
       },
     });
 
-    if (!expense) return res.status(404).json({ error: 'Expense not found' });
+    if (!expense) {
+      // May be a settlement transaction ID — look it up and return a compatible shape
+      const txn = await prisma.transaction.findUnique({
+        where: { id: req.params.id },
+        include: {
+          split: {
+            include: {
+              sharedExpense: {
+                include: {
+                  expense: { include: { category: true } },
+                  paidBy: { select: { id: true, username: true, name: true } },
+                  group: { select: { id: true, name: true } },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!txn || txn.userId !== req.user.id) {
+        return res.status(404).json({ error: 'Expense not found' });
+      }
+
+      const se = txn.split?.sharedExpense;
+      return res.status(200).json({
+        id: txn.id,
+        title: `Settlement: ${se?.expense?.title || 'Payment'}`,
+        amount: txn.amount,
+        date: txn.createdAt,
+        type: 'SETTLEMENT_PAYMENT',
+        paymentMode: txn.mode || '',
+        notes: se ? `Paid to ${se.paidBy?.name || se.paidBy?.username}` : '',
+        category: se?.expense?.category || null,
+        userId: txn.userId,
+        isSettlement: true,
+        sharedExpense: se
+          ? {
+              id: se.id,
+              title: se.title,
+              paidBy: se.paidBy,
+              group: se.group,
+              splits: [],
+            }
+          : null,
+      });
+    }
+
     if (expense.userId !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
 
     return res.status(200).json(expense);

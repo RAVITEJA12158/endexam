@@ -7,13 +7,16 @@ const exportCSV = async (req, res) => {
     const { month, year } = req.query;
 
     const where = { userId };
+    const txnDateFilter = {};
     if (month || year) {
       const y = parseInt(year) || new Date().getFullYear();
       const m = parseInt(month);
       if (m) {
         where.date = { gte: new Date(y, m - 1, 1), lt: new Date(y, m, 1) };
+        txnDateFilter.createdAt = { gte: new Date(y, m - 1, 1), lt: new Date(y, m, 1) };
       } else {
         where.date = { gte: new Date(y, 0, 1), lt: new Date(y + 1, 0, 1) };
+        txnDateFilter.createdAt = { gte: new Date(y, 0, 1), lt: new Date(y + 1, 0, 1) };
       }
     }
 
@@ -41,7 +44,7 @@ const exportCSV = async (req, res) => {
       where: {
         userId,
         type: 'PAYMENT',
-        ...(where.date ? { createdAt: where.date } : {}),
+        ...txnDateFilter,
       },
       include: {
         split: {
@@ -64,7 +67,7 @@ const exportCSV = async (req, res) => {
       where: {
         userId,
         type: 'PAYMENT_RECEIVED',
-        ...(where.date ? { createdAt: where.date } : {}),
+        ...txnDateFilter,
       },
       include: {
         split: {
