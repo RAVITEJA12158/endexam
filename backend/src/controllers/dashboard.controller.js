@@ -101,16 +101,49 @@ const getSummary = async (req, res) => {
     const monthTotal = parseFloat((monthExpenseTotal + monthOutPayTotal - monthInPayTotal).toFixed(2));
     const monthCount = monthExpenses.length + monthOutPayments.length;
 
-    // Group by category
+    // Group by category — includes own expenses + outgoing settlement payments
     const categoryMap = {};
-    for (const exp of monthExpenses) {
-      const cid = exp.category.id;
-      if (!categoryMap[cid]) {
-        categoryMap[cid] = { categoryId: cid, categoryName: exp.category.name, name: exp.category.name, total: 0 };
+
+    const addToCategory = (cat, amount) => {
+      if (!cat) return;
+      if (!categoryMap[cat.id]) {
+        categoryMap[cat.id] = { categoryId: cat.id, categoryName: cat.name, name: cat.name, total: 0 };
       }
-      categoryMap[cid].total += exp.amount;
+      categoryMap[cat.id].total += amount;
+    };
+
+    // 1) Add all own expenses
+    for (const exp of monthExpenses) {
+      addToCategory(exp.category, exp.amount);
     }
-    // Subtract inbound repayments per category
+
+    // 2) Add outgoing settlement payments (debtor paying their share)
+    const monthOutPaySplits = await prisma.transaction.findMany({
+      where: {
+        userId,
+        type: 'PAYMENT',
+        createdAt: { gte: monthStart, lt: monthEnd },
+        split: { sharedExpense: { paidById: { not: userId } } },
+      },
+      select: {
+        amount: true,
+        split: {
+          select: {
+            sharedExpense: {
+              select: {
+                expense: { select: { category: { select: { id: true, name: true } } } },
+              },
+            },
+          },
+        },
+      },
+    });
+    for (const tx of monthOutPaySplits) {
+      const cat = tx.split?.sharedExpense?.expense?.category;
+      addToCategory(cat, tx.amount);
+    }
+
+    // 3) Subtract inbound repayments (others paying back their share to this user)
     const monthInPaySplits = await prisma.transaction.findMany({
       where: {
         type: 'PAYMENT',
@@ -134,8 +167,8 @@ const getSummary = async (req, res) => {
       },
     });
     for (const tx of monthInPaySplits) {
-      const cat = tx.split.sharedExpense.expense.category;
-      if (categoryMap[cat.id]) {
+      const cat = tx.split?.sharedExpense?.expense?.category;
+      if (cat && categoryMap[cat.id]) {
         categoryMap[cat.id].total -= tx.amount;
       }
     }
