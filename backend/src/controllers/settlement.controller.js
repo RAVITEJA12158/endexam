@@ -136,16 +136,7 @@ const paySettlement = async (req, res) => {
           mode: mode || null,
         },
       }),
-      // Record receipt for the creditor so it appears in their expenses & export
-      prisma.transaction.create({
-        data: {
-          userId: split.sharedExpense.paidById,
-          splitId,
-          amount: payAmount,
-          type: 'PAYMENT_RECEIVED',
-          mode: mode || null,
-        },
-      }),
+
     ]);
 
     const io = req.app.get('io');

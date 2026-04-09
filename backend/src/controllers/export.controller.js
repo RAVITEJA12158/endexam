@@ -6,23 +6,24 @@ const exportCSV = async (req, res) => {
     const userId = req.user.id;
     const { month, year } = req.query;
 
-    const where = { userId };
+    const expenseWhere = { userId };
     const txnDateFilter = {};
+
     if (month || year) {
       const y = parseInt(year) || new Date().getFullYear();
       const m = parseInt(month);
       if (m) {
-        where.date = { gte: new Date(y, m - 1, 1), lt: new Date(y, m, 1) };
+        expenseWhere.date = { gte: new Date(y, m - 1, 1), lt: new Date(y, m, 1) };
         txnDateFilter.createdAt = { gte: new Date(y, m - 1, 1), lt: new Date(y, m, 1) };
       } else {
-        where.date = { gte: new Date(y, 0, 1), lt: new Date(y + 1, 0, 1) };
+        expenseWhere.date = { gte: new Date(y, 0, 1), lt: new Date(y + 1, 0, 1) };
         txnDateFilter.createdAt = { gte: new Date(y, 0, 1), lt: new Date(y + 1, 0, 1) };
       }
     }
 
-    // Fetch all personal expenses
+    // 1) All personal/shared expenses belonging to this user
     const expenses = await prisma.expense.findMany({
-      where,
+      where: expenseWhere,
       include: {
         category: { select: { name: true } },
         sharedExpense: {
@@ -39,8 +40,8 @@ const exportCSV = async (req, res) => {
       orderBy: { date: 'desc' },
     });
 
-    // Fetch settlements where this user paid others (outgoing)
-    const settlements = await prisma.transaction.findMany({
+    // 2) Outgoing settlement payments made by this user
+    const outgoingPayments = await prisma.transaction.findMany({
       where: {
         userId,
         type: 'PAYMENT',
@@ -62,36 +63,37 @@ const exportCSV = async (req, res) => {
       orderBy: { createdAt: 'desc' },
     });
 
-    // Fetch settlements where others paid this user (incoming)
-    const receivedSettlements = await prisma.transaction.findMany({
+    // 3) Incoming payments — splits on expenses this user paid, where others have paid
+    const incomingSplits = await prisma.expenseSplit.findMany({
       where: {
-        userId,
-        type: 'PAYMENT_RECEIVED',
-        ...txnDateFilter,
+        userId: { not: userId },
+        paidAmount: { gt: 0 },
+        sharedExpense: { paidById: userId },
+        ...(Object.keys(txnDateFilter).length > 0
+          ? { transactions: { some: { type: 'PAYMENT', ...txnDateFilter } } }
+          : {}),
       },
       include: {
-        split: {
+        user: { select: { username: true, name: true } },
+        sharedExpense: {
           include: {
-            user: { select: { username: true, name: true } },
-            sharedExpense: {
-              include: {
-                expense: { include: { category: { select: { name: true } } } },
-                group: { select: { name: true } },
-              },
-            },
+            expense: { include: { category: { select: { name: true } } } },
+            group: { select: { name: true } },
           },
         },
+        transactions: {
+          where: { type: 'PAYMENT' },
+          orderBy: { createdAt: 'desc' },
+        },
       },
-      orderBy: { createdAt: 'desc' },
     });
 
-    // Build CSV rows
+    // Build CSV
     const rows = [];
 
-    // Header
     rows.push([
       'Date', 'Title', 'Type', 'Category', 'Total Amount',
-      'Payment Mode', 'Your Share', 'Paid Amount', 'Status', 'Notes', 'Group', 'Paid By'
+      'Payment Mode', 'Your Share', 'Paid Amount', 'Status', 'Notes', 'Group', 'Paid By / From'
     ].join(','));
 
     // Personal & shared expenses
@@ -116,10 +118,11 @@ const exportCSV = async (req, res) => {
       ].join(','));
     }
 
-    // Settlement payments (outgoing — you paid someone)
-    for (const txn of settlements) {
+    // Outgoing settlement payments
+    for (const txn of outgoingPayments) {
       if (!txn.split) continue;
       const se = txn.split.sharedExpense;
+      if (!se) continue;
       rows.push([
         formatDate(txn.createdAt),
         csvEscape(`Payment for: ${se.expense.title}`),
@@ -136,24 +139,24 @@ const exportCSV = async (req, res) => {
       ].join(','));
     }
 
-    // Received settlements (incoming — someone paid you)
-    for (const txn of receivedSettlements) {
-      if (!txn.split) continue;
-      const se = txn.split.sharedExpense;
-      const paidByUser = txn.split.user;
+    // Incoming settlement receipts
+    for (const split of incomingSplits) {
+      const se = split.sharedExpense;
+      if (!se) continue;
+      const lastTxn = split.transactions[0];
       rows.push([
-        formatDate(txn.createdAt),
-        csvEscape(`Received payment for: ${se.expense.title}`),
+        formatDate(lastTxn ? lastTxn.createdAt : new Date()),
+        csvEscape(`Received from ${split.user.name || split.user.username}: ${se.expense.title}`),
         'Settlement Received',
         csvEscape(se.expense.category.name),
-        txn.amount.toFixed(2),
-        txn.mode || '',
-        txn.amount.toFixed(2),
-        txn.amount.toFixed(2),
+        split.paidAmount.toFixed(2),
+        lastTxn?.mode || '',
+        split.paidAmount.toFixed(2),
+        split.paidAmount.toFixed(2),
         'RECEIVED',
         '',
         csvEscape(se.group?.name || ''),
-        csvEscape(paidByUser?.name || paidByUser?.username || ''),
+        csvEscape(split.user.name || split.user.username),
       ].join(','));
     }
 
@@ -165,7 +168,7 @@ const exportCSV = async (req, res) => {
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     return res.status(200).send(csv);
   } catch (err) {
-    console.error(err);
+    console.error('Export error:', err);
     return res.status(500).json({ error: 'Failed to export CSV' });
   }
 };
@@ -176,7 +179,7 @@ const csvEscape = (val) => {
   if (val === null || val === undefined) return '';
   const str = String(val);
   if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-    return `"${str.replace(/"/g, '""')}"`;
+    return `"${str.replace(/"/g, '""')}"`; 
   }
   return str;
 };
