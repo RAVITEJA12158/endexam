@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Eye, EyeOff, Check, TrendingUp } from 'lucide-react'
+import { Eye, EyeOff, Check, X, TrendingUp } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { register as registerApi } from '../../api/auth'
 import { useAuth } from '../../hooks/useAuth'
@@ -77,9 +77,7 @@ export default function RegisterPage() {
     if (Object.keys(e2).length) { setErrors(e2); return }
     setLoading(true)
     try {
-      const { confirmPassword, ...payload } = form
-      payload.name = payload.fullName
-      const res = await registerApi(payload)
+      const res = await registerApi(form)
       login(res.data.token, res.data.user)
       toast.success('Account created!')
       navigate('/dashboard')
